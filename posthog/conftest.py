@@ -220,8 +220,7 @@ def run_persons_sqlx_migrations(keepdb: bool = False):
         ) from e
 
 
-@pytest.fixture(scope="package")
-def django_db_setup(django_db_setup, django_db_keepdb, django_db_blocker):
+def _django_db_setup(django_db_keepdb, django_db_blocker):
     # Django migrations have run (via django_db_setup parameter)
     # Configure persons database now that we know the actual test database name
     from django.db import connection
@@ -310,6 +309,11 @@ def django_db_setup(django_db_setup, django_db_keepdb, django_db_blocker):
             reset_clickhouse_tables()
     else:
         database.drop_database()
+
+
+@pytest.fixture(scope="package")
+def django_db_setup(django_db_setup, django_db_keepdb, django_db_blocker):
+    yield from _django_db_setup(django_db_keepdb, django_db_blocker)
 
 
 @pytest.fixture(autouse=True)

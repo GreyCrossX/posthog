@@ -14,7 +14,7 @@ from posthog.sync import database_sync_to_async
 from ee.hogai.artifacts.manager import ArtifactManager, DatabaseArtifactResult, ModelArtifactResult, StateArtifactResult
 from ee.hogai.context.dashboard.context import DashboardContext, DashboardInsightContext
 from ee.hogai.context.insight.context import InsightContext
-from ee.hogai.tool import MaxTool, ToolMessagesArtifact
+from ee.hogai.tool import MaxTool
 from ee.hogai.tools.upsert_dashboard.prompts import (
     CREATE_NO_INSIGHTS_PROMPT,
     DASHBOARD_NOT_FOUND_PROMPT,
@@ -84,13 +84,13 @@ class UpsertDashboardTool(MaxTool):
     def get_required_resource_access(self):
         return [("dashboard", "editor")]
 
-    async def _arun_impl(self, action: UpsertDashboardAction) -> tuple[str, ToolMessagesArtifact | None]:
+    async def _arun_impl(self, action: UpsertDashboardAction) -> tuple[str, dict | None]:
         if isinstance(action, CreateDashboardToolArgs):
             return await self._handle_create(action)
         else:
             return await self._handle_update(action)
 
-    async def _handle_create(self, action: CreateDashboardToolArgs) -> tuple[str, ToolMessagesArtifact | None]:
+    async def _handle_create(self, action: CreateDashboardToolArgs) -> tuple[str, dict | None]:
         """Handle CREATE action: create a new dashboard with insights."""
         insights, missing_ids = await self._resolve_insights(action.insight_ids)
 
@@ -100,9 +100,9 @@ class UpsertDashboardTool(MaxTool):
         dashboard = await self._create_dashboard_with_tiles(action.name, action.description, insights)
         output = await self._format_dashboard_output(dashboard, insights, missing_ids)
 
-        return output, None
+        return output, {"dashboard_id": dashboard.id}
 
-    async def _handle_update(self, action: UpdateDashboardToolArgs) -> tuple[str, ToolMessagesArtifact | None]:
+    async def _handle_update(self, action: UpdateDashboardToolArgs) -> tuple[str, dict | None]:
         """Handle UPDATE action: update an existing dashboard."""
         try:
             dashboard = await Dashboard.objects.aget(id=action.dashboard_id, team=self._team, deleted=False)
@@ -131,7 +131,7 @@ class UpsertDashboardTool(MaxTool):
 
         output = await self._format_dashboard_output(dashboard, all_insights, missing_ids)
 
-        return output, None
+        return output, {"dashboard_id": dashboard.id}
 
     async def _resolve_insights(self, insight_ids: list[str]) -> tuple[list[Insight], list[str]]:
         """

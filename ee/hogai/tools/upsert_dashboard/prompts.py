@@ -1,6 +1,10 @@
 UPSERT_DASHBOARD_TOOL_PROMPT = """
 Use this tool to create or update a dashboard with provided insights.
 
+# How to use this tool
+- Proactively use search tools to find existing insights and dashboards.
+- Create new insights with the create_insight tool.
+
 # When to use this tool
 - The user asks to create or update a dashboard.
 - The user asks for multiple metrics or dimensions, so it might be better to visualize them in a dashboard.

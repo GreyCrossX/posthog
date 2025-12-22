@@ -1,11 +1,14 @@
 import os
 import datetime
-from collections.abc import Generator
+from collections.abc import Awaitable, Callable, Generator
+from functools import wraps
 
 import pytest
 
+from django.db import transaction
 from django.test import override_settings
 
+from asgiref.sync import sync_to_async
 from braintrust_langchain import BraintrustCallbackHandler, set_global_handler
 from langchain_core.runnables import RunnableConfig
 
@@ -102,7 +105,7 @@ def call_root_for_insight_generation(demo_org_team_user):
     yield callable
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session", autouse=True)
 def demo_org_team_user(set_up_evals, django_db_blocker) -> Generator[tuple[Organization, Team, User], None, None]:  # noqa: F811
     with django_db_blocker.unblock():
         team: Team | None = Team.objects.order_by("-created_at").first()
@@ -135,7 +138,7 @@ def demo_org_team_user(set_up_evals, django_db_blocker) -> Generator[tuple[Organ
         yield org, team, user
 
 
-@pytest.fixture(scope="package", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def core_memory(demo_org_team_user, django_db_blocker) -> Generator[CoreMemory, None, None]:
     initial_memory = """Hedgebox is a cloud storage service enabling users to store, share, and access files across devices.
 
@@ -161,3 +164,62 @@ def core_memory(demo_org_team_user, django_db_blocker) -> Generator[CoreMemory, 
             },
         )
     yield core_memory
+
+
+class atomic_async[T: Callable]:
+    """
+    An asynchronous context manager and decorator for Django atomic transactions.
+
+    Args:
+        using (str | None): The database alias to use. Defaults to None.
+        savepoint (bool): Whether to create a savepoint. Defaults to True.
+        durable (bool): Whether the transaction should be durable. Defaults to False.
+
+    Example as context:
+        async with atomic_async():
+            await model.asave()
+
+    Example as decorator:
+        @atomic_async()
+        async def my_function():
+            await model.asave()
+    """
+
+    def __init__(self, using=None, savepoint=True, durable=False):
+        self.using = using
+        self.savepoint = savepoint
+        self.durable = durable
+
+    async def __aenter__(self):
+        self.atomic = await sync_to_async(
+            transaction.atomic,
+            thread_sensitive=True,
+        )(using=self.using, savepoint=self.savepoint, durable=self.durable)
+        await sync_to_async(self.atomic.__enter__, thread_sensitive=True)()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await sync_to_async(
+            self.atomic.__exit__,
+            thread_sensitive=True,
+        )(exc_type, exc_val, exc_tb)
+
+    def __call__(self, func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+        @wraps(func)
+        async def decorated(*args, **kwargs):
+            async with self:
+                return await func(*args, **kwargs)
+
+        return decorated
+
+
+@pytest.fixture
+async def rollback_changes(core_memory):
+    class RollbackException(Exception):
+        pass
+
+    try:
+        async with atomic_async():
+            yield
+            raise RollbackException
+    except RollbackException:
+        pass
