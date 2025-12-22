@@ -4,6 +4,8 @@ Use this tool to create or update a dashboard with provided insights.
 # How to use this tool
 - Proactively use search tools to find existing insights and dashboards.
 - Create new insights with the create_insight tool.
+- Use a minimal set of insights to reflect the changes the user requested.
+- When updating dashboard or insight names or descriptions, use the original insight names or descriptions as a reference.
 
 # When to use this tool
 - The user asks to create or update a dashboard.
