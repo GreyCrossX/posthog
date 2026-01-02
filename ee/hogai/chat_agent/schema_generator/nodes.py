@@ -12,7 +12,7 @@ from langchain_core.messages import (
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
 
-from posthog.schema import ArtifactContentType, ArtifactSource, VisualizationArtifactContent
+from posthog.schema import ArtifactContentType, ArtifactMessage, ArtifactSource, VisualizationArtifactContent
 
 from posthog.models.group_type_mapping import GroupTypeMapping
 
@@ -147,7 +147,7 @@ class SchemaGeneratorNode(AssistantNode, Generic[Q]):
 
         # We've got a result that either passed the quality check or we've exhausted all attempts at iterating - return
         # Create an artifact with the visualization content
-        artifact = await self.context_manager.artifacts.create(
+        artifact = await self.context_manager.artifacts.acreate(
             content=VisualizationArtifactContent(
                 query=result.query,
                 name=state.visualization_title,
@@ -205,13 +205,13 @@ class SchemaGeneratorNode(AssistantNode, Generic[Q]):
             )
         ]
 
-        # Batch fetch all artifact contents (pass full state.messages for State source lookup)
-        artifact_contents = await self.context_manager.artifacts.aget_contents_by_message_id(state.messages)
-
         for message in artifact_messages:
-            content = artifact_contents.get(message.id or "")
-            if not content:
+            # Only process visualization artifacts (aenrich_messages returns ArtifactMessage with content)
+            if not isinstance(message, ArtifactMessage):
                 continue
+            if not isinstance(message.content, VisualizationArtifactContent):
+                continue
+            content = message.content
             plan = content.plan or ""
             query = content.name or ""
             answer = content.query
