@@ -1934,7 +1934,8 @@
                 "create_insight",
                 "create_form",
                 "task",
-                "upsert_dashboard"
+                "upsert_dashboard",
+                "create_notebook"
             ],
             "type": "string"
         },

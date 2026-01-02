@@ -59,8 +59,10 @@ from ee.hogai.tools import (
     TaskTool,
     TodoWriteTool,
 )
+from ee.hogai.tools.create_notebook.tool import CreateNotebookTool
 from ee.hogai.utils.feature_flags import (
     has_create_form_tool_feature_flag,
+    has_create_notebook_tool_feature_flag,
     has_error_tracking_mode_feature_flag,
     has_phai_tasks_feature_flag,
     has_task_tool_feature_flag,
@@ -101,6 +103,8 @@ class ChatAgentToolkit(AgentToolkit):
             tools.append(CreateFormTool)
         if has_phai_tasks_feature_flag(self._team, self._user):
             tools.extend(TASK_TOOLS)
+        if has_create_notebook_tool_feature_flag(self._team, self._user):
+            tools.append(CreateNotebookTool)
         if has_task_tool_feature_flag(self._team, self._user):
             tools.append(TaskTool)
         return tools
