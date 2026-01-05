@@ -81,7 +81,7 @@ def indent_js(js_content: str, indent: int = 4) -> str:
 
 
 def cache_key_for_team_token(team_token: str) -> str:
-    return f"remote_config/{team_token}/config"
+    return f"remote_config/{team_token}2/config"
 
 
 @tracer.start_as_current_span("RemoteConfig.sanitize_config_for_public_cdn")
@@ -125,7 +125,7 @@ class RemoteConfig(UUIDTModel):
                 return HyperCacheStoreMissing()
 
         return HyperCache(
-            namespace="array",
+            namespace="array2",
             value="config.json",
             token_based=True,  # We store and load via the team token
             load_fn=load_config,
@@ -175,6 +175,11 @@ class RemoteConfig(UUIDTModel):
         config["errorTracking"] = {
             "autocaptureExceptions": bool(team.autocapture_exceptions_opt_in),
             "suppressionRules": get_suppression_rules(team) if team.autocapture_exceptions_opt_in else [],
+        }
+
+        # MARK: Logs
+        config["logs"] = {
+            "captureConsoleLogs": bool(team.logs_capture_console_log_opt_in),
         }
 
         # MARK: Session recording
@@ -311,7 +316,6 @@ class RemoteConfig(UUIDTModel):
                 pass
 
         config["siteApps"] = site_apps
-
         # Array of JS objects to be included when building the final JS
         config["siteAppsJS"] = self._build_site_apps_js()
 

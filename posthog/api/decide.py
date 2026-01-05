@@ -180,6 +180,7 @@ def get_base_config(token: str, team: Team, request: HttpRequest, skip_db: bool 
                 response["sessionRecording"] = False
 
     response["surveys"] = surveys_opt_in
+    response["logs"] = True
     response["heatmaps"] = True if team.heatmaps_opt_in else False
 
     # Conversations widget config
@@ -226,6 +227,10 @@ def get_base_config(token: str, team: Team, request: HttpRequest, skip_db: bool 
     response["errorTracking"] = {
         "autocaptureExceptions": True if team.autocapture_exceptions_opt_in else False,
         "suppressionRules": suppression_rules,
+    }
+
+    response["logs"] = {
+        "captureConsoleLogs": True if team.logs_capture_console_log_opt_in else False,
     }
 
     site_apps = []
