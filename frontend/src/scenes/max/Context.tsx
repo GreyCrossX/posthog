@@ -9,6 +9,8 @@ import { LemonButton, LemonTag, Tooltip } from '@posthog/lemon-ui'
 import { TaxonomicPopover } from 'lib/components/TaxonomicPopover/TaxonomicPopover'
 import { IconAction, IconEvent } from 'lib/lemon-ui/icons'
 
+import { AgentMode } from '~/queries/schema/schema-assistant-messages'
+
 import { ModeSelector } from './components/ModeSelector'
 import { maxContextLogic } from './maxContextLogic'
 import { maxThreadLogic } from './maxThreadLogic'
@@ -298,7 +300,7 @@ interface ContextDisplayProps {
 }
 
 export function ContextDisplay({ size = 'default' }: ContextDisplayProps): JSX.Element | null {
-    const { deepResearchMode, showContextUI, contextDisabledReason } = useValues(maxThreadLogic)
+    const { agentMode, showContextUI, contextDisabledReason } = useValues(maxThreadLogic)
     const { hasData, contextOptions, taxonomicGroupTypes, mainTaxonomicGroupType, toolContextItems } =
         useValues(maxContextLogic)
     const { handleTaxonomicFilterChange } = useActions(maxContextLogic)
@@ -313,7 +315,7 @@ export function ContextDisplay({ size = 'default' }: ContextDisplayProps): JSX.E
         <div className="px-2 w-full">
             <div className="flex flex-wrap items-start gap-1 w-full">
                 <ModeSelector />
-                {deepResearchMode ? (
+                {agentMode === AgentMode.Research ? (
                     <LemonButton
                         size="xxsmall"
                         type="tertiary"

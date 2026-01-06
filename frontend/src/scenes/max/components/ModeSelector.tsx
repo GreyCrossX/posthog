@@ -11,6 +11,7 @@ import { Scene } from 'scenes/sceneTypes'
 import { sceneConfigurations } from 'scenes/scenes'
 
 import { AgentMode } from '~/queries/schema/schema-assistant-messages'
+import { ConversationType } from '~/types'
 
 import {
     MODE_DEFINITIONS,
@@ -199,15 +200,18 @@ function getModeOptions({
 }
 
 export function ModeSelector(): JSX.Element | null {
-    const { agentMode, deepResearchMode, contextDisabledReason } = useValues(maxThreadLogic)
+    const { agentMode, deepResearchMode, contextDisabledReason, conversation } = useValues(maxThreadLogic)
     const { setAgentMode, setDeepResearchMode } = useActions(maxThreadLogic)
     const deepResearchEnabled = useFeatureFlag('MAX_DEEP_RESEARCH')
     const planModeEnabled = useFeatureFlag('PHAI_PLAN_MODE')
     const webSearchEnabled = useFeatureFlag('PHAI_WEB_SEARCH')
     const errorTrackingModeEnabled = useFeatureFlag('PHAI_ERROR_TRACKING_MODE')
 
-    const currentValue: ModeValue =
-        agentMode && (deepResearchMode ? 'deep_research' : agentMode === AgentMode.Plan ? 'plan' : agentMode)
+    const currentValue: ModeValue = deepResearchMode
+        ? 'deep_research'
+        : agentMode === AgentMode.Plan
+          ? 'plan'
+          : agentMode
 
     const modeOptions = useMemo(
         () => getModeOptions({ planModeEnabled, deepResearchEnabled, webSearchEnabled, errorTrackingModeEnabled }),
@@ -235,13 +239,18 @@ export function ModeSelector(): JSX.Element | null {
         [currentValue, setAgentMode, setDeepResearchMode]
     )
 
+    const isDeepResearch = conversation?.type === ConversationType.DeepResearch
+
     return (
         <LemonSelect
-            value={currentValue}
+            value={isDeepResearch ? 'deep_research' : currentValue}
             onChange={handleChange}
             options={modeOptions}
             size="xxsmall"
             type="tertiary"
+            disabledReason={
+                isDeepResearch ? "You're in research mode, start a new conversation to change mode" : contextDisabledReason
+            }
             tooltip={buildGeneralTooltip(
                 'Select a mode to focus PostHog AI on a specific product or task. Each mode unlocks specialized capabilities, tools, and expertise.',
                 getDefaultTools({ webSearchEnabled })
