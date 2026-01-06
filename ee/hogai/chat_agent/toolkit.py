@@ -17,7 +17,16 @@ from products.tasks.backend.max_tools import (
 from ee.hogai.core.agent_modes.toolkit import AgentToolkit, AgentToolkitManager
 from ee.hogai.registry import get_contextual_tool_class
 from ee.hogai.tool import MaxTool
-from ee.hogai.tools import ReadDataTool, ReadTaxonomyTool, SearchTool, SwitchModeTool, TaskTool, TodoWriteTool
+from ee.hogai.tools import (
+    CreateFormTool,
+    ReadDataTool,
+    ReadTaxonomyTool,
+    SearchTool,
+    SwitchModeTool,
+    TaskTool,
+    TodoWriteTool,
+)
+from ee.hogai.tools.create_notebook.tool import CreateNotebookTool
 from ee.hogai.utils.feature_flags import (
     has_phai_tasks_feature_flag,
     has_task_tool_feature_flag,
@@ -44,6 +53,21 @@ TASK_TOOLS: list[type[MaxTool]] = [
 ]
 
 
+class ChatAgentPlanToolkit(AgentToolkit):
+    """Agent toolkit for plan mode with base tools + plan-specific tools."""
+
+    @property
+    def tools(self) -> list[type[MaxTool]]:
+        return [
+            ReadTaxonomyTool,
+            SearchTool,
+            TodoWriteTool,
+            SwitchModeTool,
+            CreateFormTool,
+            CreateNotebookTool,
+        ]
+
+
 class ChatAgentToolkit(AgentToolkit):
     @property
     def tools(self) -> list[type[MaxTool]]:
@@ -53,6 +77,12 @@ class ChatAgentToolkit(AgentToolkit):
         if has_task_tool_feature_flag(self._team, self._user):
             tools.append(TaskTool)
         return tools
+
+
+class PlanModeSwitchAgentToolkit(AgentToolkit):
+    """Empty toolkit for the fictitious execution/plan modes that triggers transition to execution/plan mode."""
+
+    pass
 
 
 class ChatAgentToolkitManager(AgentToolkitManager):

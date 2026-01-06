@@ -402,6 +402,8 @@ export enum AgentMode {
     SQL = 'sql',
     SessionReplay = 'session_replay',
     ErrorTracking = 'error_tracking',
+    Plan = 'plan',
+    Execution = 'execution',
 }
 
 export enum SlashCommandName {

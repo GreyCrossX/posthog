@@ -48,12 +48,13 @@ class ConversationMinimalSerializer(serializers.ModelSerializer):
 class ConversationSerializer(ConversationMinimalSerializer):
     class Meta:
         model = Conversation
-        fields = [*_conversation_fields, "messages", "has_unsupported_content", "agent_mode"]
+        fields = [*_conversation_fields, "messages", "has_unsupported_content", "agent_mode", "supermode"]
         read_only_fields = fields
 
     messages = serializers.SerializerMethodField()
     has_unsupported_content = serializers.SerializerMethodField()
     agent_mode = serializers.SerializerMethodField()
+    supermode = serializers.SerializerMethodField()
 
     def get_messages(self, conversation: Conversation) -> list[dict[str, Any]]:
         state, _ = self._get_cached_state(conversation)
@@ -81,6 +82,12 @@ class ConversationSerializer(ConversationMinimalSerializer):
         state, _ = self._get_cached_state(conversation)
         if state:
             return state.agent_mode_or_default
+        return None
+
+    def get_supermode(self, conversation: Conversation) -> str | None:
+        state, _ = self._get_cached_state(conversation)
+        if state:
+            return state.supermode
         return None
 
     def _get_cached_state(self, conversation: Conversation) -> tuple[AssistantMaxGraphState | None, bool]:

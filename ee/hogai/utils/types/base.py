@@ -105,6 +105,11 @@ def replace(_: Any | None, right: Any | None) -> Any | None:
     return right
 
 
+def replace_if_not_none(left: Any | None, right: Any | None) -> Any | None:
+    """Replace the left value with right only if right is not None."""
+    return right if right is not None else left
+
+
 def append(left: Sequence, right: Sequence) -> Sequence:
     """
     Appends the right value to the state field.
@@ -267,9 +272,13 @@ class BaseStateWithMessages(BaseState):
     """
     Messages exposed to the user.
     """
-    agent_mode: AgentMode | None = Field(default=None)
+    agent_mode: Annotated[AgentMode | None, replace_if_not_none] = Field(default=None)
     """
     The mode of the agent.
+    """
+    supermode: Annotated[AgentMode | None, replace_if_not_none] = Field(default=None)
+    """
+    The supermode of the agent (e.g., PLAN, RESEARCH).
     """
 
     @field_validator("messages", mode="after")

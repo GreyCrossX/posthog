@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from posthog.schema import AgentMode
 
+from ee.hogai.chat_agent.executables import ChatAgentPlanExecutable, ChatAgentPlanToolsExecutable
 from ee.hogai.core.agent_modes.factory import AgentModeDefinition
 from ee.hogai.core.agent_modes.toolkit import AgentToolkit
 from ee.hogai.tools.todo_write import TodoWriteExample
@@ -23,6 +24,8 @@ The assistant used the search tool because:
 3. This is a straightforward search that doesn't require multiple steps
 """.strip()
 
+MODE_DESCRIPTION = "Specialized mode for analyzing error tracking issues. This mode allows you to search and filter error tracking issues by status, date range, frequency, and other criteria."
+
 
 class ErrorTrackingAgentToolkit(AgentToolkit):
     POSITIVE_TODO_EXAMPLES = [
@@ -42,6 +45,15 @@ class ErrorTrackingAgentToolkit(AgentToolkit):
 
 error_tracking_agent = AgentModeDefinition(
     mode=AgentMode.ERROR_TRACKING,
-    mode_description="Specialized mode for analyzing error tracking issues. This mode allows you to search and filter error tracking issues by status, date range, frequency, and other criteria.",
+    mode_description=MODE_DESCRIPTION,
     toolkit_class=ErrorTrackingAgentToolkit,
+)
+
+
+chat_agent_plan_error_tracking_agent = AgentModeDefinition(
+    mode=AgentMode.ERROR_TRACKING,
+    mode_description=MODE_DESCRIPTION,
+    toolkit_class=ErrorTrackingAgentToolkit,
+    node_class=ChatAgentPlanExecutable,
+    tools_node_class=ChatAgentPlanToolsExecutable,
 )
