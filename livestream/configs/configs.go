@@ -69,9 +69,11 @@ func InitConfigs(filename, configPath string) {
 	viper.SetEnvPrefix("livestream") // will be uppercased automatically
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
-	viper.BindEnv("jwt.secret")                        // read from LIVESTREAM_JWT_SECRET
-	viper.BindEnv("postgres.url")                      // read from LIVESTREAM_POSTGRES_URL
-	viper.BindEnv("session_recording.max_lru_entries") // read from LIVESTREAM_SESSION_RECORDING_MAX_LRU_ENTRIES
+
+	// Ignoring error because we know the key isn't empty
+	_ = viper.BindEnv("jwt.secret")                        // read from LIVESTREAM_JWT_SECRET
+	_ = viper.BindEnv("postgres.url")                      // read from LIVESTREAM_POSTGRES_URL
+	_ = viper.BindEnv("session_recording.max_lru_entries") // read from LIVESTREAM_SESSION_RECORDING_MAX_LRU_ENTRIES
 }
 
 func LoadConfig() (*Config, error) {
