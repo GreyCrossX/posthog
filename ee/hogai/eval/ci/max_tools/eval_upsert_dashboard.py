@@ -119,11 +119,8 @@ class DashboardOperationAccuracy(LLMClassifier):
 @pytest.fixture
 def call_agent_for_dashboard(demo_org_team_user):
     """Run full agent graph with natural language dashboard requests."""
-    with (
-        patch(
-            "ee.hogai.core.agent_modes.presets.product_analytics.has_upsert_dashboard_feature_flag", return_value=True
-        ),
-        patch("ee.hogai.core.agent_modes.presets.product_analytics.has_agent_modes_feature_flag", return_value=True),
+    with patch(
+        "ee.hogai.core.agent_modes.presets.product_analytics.has_upsert_dashboard_feature_flag", return_value=True
     ):
         _, team, user = demo_org_team_user
 

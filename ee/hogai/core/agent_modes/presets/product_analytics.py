@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 DASHBOARD_CREATION_TODO_EXAMPLE_EXAMPLE = """
 User: Generate a revenue dashboard
 Assistant: I'll help you create a revenue dashboard. Let me make a todo list to track this implementation.
-1. Search for existing dashboards that might be related to revenue
-2. Search for existing insights that might be related to revenue metrics
-3. Retrieve the taxonomy and understand the schema
-4. Retrieve the data warehouse schema to find the relevant tables
+1. Search existing dashboards and insights that might be related to revenue metrics (the search tool)
+2. Enumerate the insights and dashboards to find more (the read_data)
+3. Retrieve the taxonomy and understand the schema (the read_taxonomy tool)
+4. Retrieve the data warehouse schema to find the relevant tables (the read_data tool)
 5. Present to the user a plan of insights to create for the revenue dashboard
 6. Create new insights for the revenue metrics if none are found
 7. Create a new dashboard with the insights
