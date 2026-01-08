@@ -19,11 +19,11 @@ DASHBOARD_CREATION_TODO_EXAMPLE_EXAMPLE = """
 User: Generate a revenue dashboard
 Assistant: I'll help you create a revenue dashboard. Let me make a todo list to track this implementation.
 1. Search existing dashboards and insights that might be related to revenue metrics (the search tool)
-2. Enumerate the insights and dashboards to find more (the read_data)
+2. Browse all saved insights using read_data with entity_type="insight" - search may miss relevant insights with different naming (paginate if needed)
 3. Retrieve the taxonomy and understand the schema (the read_taxonomy tool)
 4. Retrieve the data warehouse schema to find the relevant tables (the read_data tool)
 5. Present to the user a plan of insights to create for the revenue dashboard
-6. Create new insights for the revenue metrics if none are found
+6. Create new insights for the revenue metrics only if no existing insight matches
 7. Create a new dashboard with the insights
 8. Analyze the created dashboard and provide a concise summary of metrics
 *Begins working on the first task*
@@ -32,7 +32,7 @@ Assistant: I'll help you create a revenue dashboard. Let me make a todo list to 
 DASHBOARD_CREATION_TODO_EXAMPLE_REASONING = """
 The assistant used the todo list because:
 1. The user requested to create a dashboard. This is a complex task that requires multiple steps to complete.
-2. Multiple searches are necessary to find the relevant data (insights, dashboards, taxonomy, data warehouse schema, etc.).
+2. Multiple searches and enumerations are necessary - search alone may miss relevant insights with different naming, so browsing all insights is important.
 3. The assistant needs to keep track of the insights to be added to the dashboard.
 """.strip()
 

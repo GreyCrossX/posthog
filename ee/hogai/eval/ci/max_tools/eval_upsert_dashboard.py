@@ -201,7 +201,9 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
         scores=[DashboardOperationAccuracy()],
         data=[
             EvalCase(
-                input=EvalInput(input="I want a dashboard to track user journeys from homepage to signup"),
+                input=EvalInput(
+                    input="I want to create a new dashboard to track user journeys from homepage to signup"
+                ),
                 expected=EvalExpected(
                     action="create",
                     insight_titles=["Homepage view to signup conversion", "User paths starting at homepage"],
@@ -210,14 +212,14 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
             EvalCase(
                 input=EvalInput(input="Put together a dashboard for file activity metrics"),
                 expected=EvalExpected(
-                    action="create",
-                    insight_titles=["File interactions"],
+                    action="The action should be blank because the user request is ambiguous.",
                 ),
             ),
             EvalCase(
                 input=EvalInput(input="Create a dashboard showing how users navigate the site"),
                 expected=EvalExpected(
                     action="create",
+                    # Should find this insight
                     insight_titles=["User paths starting at homepage"],
                 ),
             ),

@@ -47,6 +47,7 @@ Lists created data (insights, dashboards, cohorts, etc.) and conversation artifa
 - The user wants to browse their saved work
 - You need to find created data but don't have the ID
 - The user asks "what insights do I have?" or similar
+- After searching, to discover additional relevant entities that search may have missed due to different naming (e.g., a "User Paths" insight won't match a "funnel" search query)
 
 ## Parameters:
 - entity_type: Type to list (e.g., "insight", "dashboard", "artifact")

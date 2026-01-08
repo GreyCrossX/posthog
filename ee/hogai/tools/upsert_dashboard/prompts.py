@@ -2,24 +2,42 @@ UPSERT_DASHBOARD_TOOL_PROMPT = """
 Use this tool to create or update a dashboard with provided insights.
 
 # How to use this tool
-- Proactively use search tools to find existing insights and dashboards.
+- Proactively use search and read_data tools to check if the dashboard already exists. The user might provide you the dashboard.
+- If the request is ambiguous whether you need to create a new dashboard or update an existing one, ask for clarification.
+- If the dashboard exists, understand its structure by using the read_data tool.
+- Proactively use search and read_data tools to find existing insights. If there are matching insights, read their insight schemas to understand whether they match the user's intent and have data.
 - Create new insights with the create_insight tool.
-- Use a minimal set of insights to reflect the changes the user requested.
-- When updating dashboard or insight names or descriptions, use the original insight names or descriptions as a reference.
-
-# When to use this tool
-- The user asks to create or update a dashboard.
-- The user asks for multiple metrics or dimensions, so it might be better to visualize them in a dashboard.
-- The user wants to add an insight to an existing dashboard.
-
-# When NOT to use this tool
-- The user wants to save a single insight.
+- Call this tool when you have enough information to create or update the dashboard.
 
 # Understanding replace_insights
 - `replace_insights=False` (default): Appends provided insights to existing ones
 - `replace_insights=True`: Dashboard will contain exactly the insights you specify in `insight_ids`
 
 Example: Dashboard has [A, B, C]. To replace B with D, use `replace_insights=True` with `insight_ids=[A, D, C]`. Using just `insight_ids=[D]` would remove A and C.
+
+# When to use this tool
+- The user asks to create or update a dashboard.
+- The user asks for multiple metrics or dimensions, so it might be better to visualize them in a dashboard.
+- The user wants to add an insight to an existing dashboard.
+
+<example>
+User: create a dashboard for file activity metrics
+Assistant: I'll create a new dashboard for file activity metrics.
+<reasoning>The user clearly wants to create a new dashboard.</reasoning>
+<example>
+
+<example>
+User: I want a dashboard of how my business is doing
+Assistant: I'll search for existing dashboards. I found a relevant dashboard. Do you want me to summarize it or update it?
+User: User: I want you to add MRR to that dashboard.
+<reasoning>The user's request was ambiguous. The assistant needed to ask for more details. The user wanted to modify it with specific insights.</reasoning>
+
+# When NOT to use this tool
+- The user wants to save a single insight.
+
+# Guidelines
+- Use a minimal set of insights to reflect the changes the user requested.
+- When updating dashboard or insight names or descriptions, use the original insight names or descriptions as a reference.
 """.strip()
 
 
