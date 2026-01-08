@@ -62,7 +62,7 @@ Error: {{output.error}}
 
 Evaluate:
 1. Did the agent call the upsert_dashboard tool?
-2. Was the correct action (create/update) chosen?
+2. Was the correct action (create/update/no action) chosen?
 3. Does the tool output confirm a dashboard was created/updated?
 4. Do the insight titles in the tool output match the expected ones BY MEANING? Titles don't need to be exact - they should be semantically equivalent (e.g. "File activity" matches "File interactions", "User journey funnel" matches "Homepage view to signup conversion"). If expected is null/None, skip this check.
 5. If error expected, was it returned?
@@ -201,9 +201,7 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
         scores=[DashboardOperationAccuracy()],
         data=[
             EvalCase(
-                input=EvalInput(
-                    input="I want to create a new dashboard to track user journeys from homepage to signup"
-                ),
+                input=EvalInput(input="I want to create a dashboard of how users explore the website"),
                 expected=EvalExpected(
                     action="create",
                     insight_titles=["Homepage view to signup conversion", "User paths starting at homepage"],
@@ -212,7 +210,7 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
             EvalCase(
                 input=EvalInput(input="Put together a dashboard for file activity metrics"),
                 expected=EvalExpected(
-                    action="The action should be blank because the user request is ambiguous.",
+                    action="No action should be taken",
                 ),
             ),
             EvalCase(
