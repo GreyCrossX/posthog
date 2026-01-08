@@ -16,6 +16,7 @@ import { cn } from 'lib/utils/css-classes'
 import { urls } from 'scenes/urls'
 
 import { ExperimentStatsMethod, ProgressStatus } from '~/types'
+import { MultivariateFlagVariant } from '~/types'
 
 import { CONCLUSION_DISPLAY_CONFIG } from '../constants'
 import { experimentLogic } from '../experimentLogic'
@@ -83,8 +84,9 @@ export function Info({ tabId }: Pick<ExperimentSceneLogicProps, 'tabId'>): JSX.E
         isExperimentDraft,
         isSingleVariantShipped,
         featureFlags,
+        autoRefresh,
     } = useValues(experimentLogic)
-    const { updateExperiment, refreshExperimentResults } = useActions(experimentLogic)
+    const { updateExperiment, refreshExperimentResults, reportExperimentMetricsRefreshed } = useActions(experimentLogic)
     const {
         openEditConclusionModal,
         openDescriptionModal,
@@ -131,7 +133,7 @@ export function Info({ tabId }: Pick<ExperimentSceneLogicProps, 'tabId'>): JSX.E
                                 <StatusTag status={status} />
                                 {isSingleVariantShipped && (
                                     <Tooltip
-                                        title={`Variant "${experiment.feature_flag?.filters.multivariate?.variants?.find((v) => v.rollout_percentage === 100)?.key}" has been rolled out to 100% of users`}
+                                        title={`Variant "${experiment.feature_flag?.filters.multivariate?.variants?.find((v: MultivariateFlagVariant) => v.rollout_percentage === 100)?.key}" has been rolled out to 100% of users`}
                                     >
                                         <LemonTag type="completion" className="cursor-default">
                                             <b className="uppercase">100% rollout</b>
@@ -272,14 +274,36 @@ export function Info({ tabId }: Pick<ExperimentSceneLogicProps, 'tabId'>): JSX.E
                                         />
                                     )}
                                     {useNewReloadAction ? (
-                                        <ExperimentReloadAction />
+                                        <ExperimentReloadAction
+                                            isRefreshing={
+                                                primaryMetricsResultsLoading || secondaryMetricsResultsLoading
+                                            }
+                                            lastRefresh={lastRefresh}
+                                            onClick={() => {
+                                                // Track manual refresh click
+                                                reportExperimentMetricsRefreshed(experiment, true, {
+                                                    triggered_by: 'manual',
+                                                    auto_refresh_enabled: autoRefresh.enabled,
+                                                    auto_refresh_interval: autoRefresh.interval,
+                                                })
+                                                refreshExperimentResults(true)
+                                            }}
+                                        />
                                     ) : (
                                         <ExperimentLastRefresh
                                             isRefreshing={
                                                 primaryMetricsResultsLoading || secondaryMetricsResultsLoading
                                             }
                                             lastRefresh={lastRefresh}
-                                            onClick={() => refreshExperimentResults(true)}
+                                            onClick={() => {
+                                                // Track manual refresh click (old UI)
+                                                reportExperimentMetricsRefreshed(experiment, true, {
+                                                    triggered_by: 'manual',
+                                                    auto_refresh_enabled: false,
+                                                    auto_refresh_interval: 0,
+                                                })
+                                                refreshExperimentResults(true)
+                                            }}
                                         />
                                     )}
                                 </>
