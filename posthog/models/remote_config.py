@@ -81,7 +81,7 @@ def indent_js(js_content: str, indent: int = 4) -> str:
 
 
 def cache_key_for_team_token(team_token: str) -> str:
-    return f"remote_config/{team_token}2/config"
+    return f"remote_config/{team_token}/config"
 
 
 @tracer.start_as_current_span("RemoteConfig.sanitize_config_for_public_cdn")
@@ -125,7 +125,7 @@ class RemoteConfig(UUIDTModel):
                 return HyperCacheStoreMissing()
 
         return HyperCache(
-            namespace="array2",
+            namespace="array",
             value="config.json",
             token_based=True,  # We store and load via the team token
             load_fn=load_config,
