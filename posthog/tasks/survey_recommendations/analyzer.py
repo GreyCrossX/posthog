@@ -112,7 +112,7 @@ def _format_flags_section(flags: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_existing_recommendations(team: Team) -> str:
+async def _format_existing_recommendations_async(team: Team) -> str:
     from posthog.models.surveys.survey_recommendation import SurveyRecommendation
 
     recommendations = SurveyRecommendation.objects.filter(
@@ -120,11 +120,11 @@ def _format_existing_recommendations(team: Team) -> str:
         status=SurveyRecommendation.Status.ACTIVE,
     ).select_related("source_insight", "source_feature_flag", "source_experiment")
 
-    if not recommendations.exists():
+    if not await recommendations.aexists():
         return "No existing recommendations."
 
     lines = []
-    for rec in recommendations:
+    async for rec in recommendations:
         source = "Unknown"
         if rec.source_insight:
             source = f"Insight: {rec.source_insight.short_id}"
@@ -144,12 +144,13 @@ def _format_existing_recommendations(team: Team) -> str:
     return "\n".join(lines)
 
 
-def build_analysis_prompt(team: Team) -> str:
+async def build_analysis_prompt_async(team: Team) -> str:
     """Build the prompt for PostHog AI to analyze survey opportunities."""
     candidates = get_survey_recommendation_candidates(team)
+    existing_recs = await _format_existing_recommendations_async(team)
 
     return SURVEY_RECOMMENDATION_PROMPT.format(
-        existing_recommendations_section=_format_existing_recommendations(team),
+        existing_recommendations_section=existing_recs,
         funnels_section=_format_funnels_section(candidates["most_viewed_funnels"]),
         trends_section=_format_trends_section(candidates["most_viewed_trends"]),
         concluded_experiments_section=_format_experiments_section(candidates["concluded_experiments"]),
@@ -172,7 +173,7 @@ async def analyze_survey_opportunities_async(team: Team, user: User) -> str | No
     Returns:
         The AI's analysis as a string, or None if analysis failed
     """
-    prompt = build_analysis_prompt(team)
+    prompt = await build_analysis_prompt_async(team)
 
     # Create an internal conversation for this analysis
     conversation = await Conversation.objects.acreate(

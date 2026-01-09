@@ -14,14 +14,6 @@ from posthog.schema import AssistantTool
 from ee.hogai.tool import MaxTool
 
 
-class SurveyRecommendationAction(BaseModel):
-    """The action to take on a recommendation."""
-
-    action: Literal["NEW", "REINFORCE", "UPDATE", "DISMISS"] = Field(
-        description="NEW: create new recommendation, REINFORCE: keep existing, UPDATE: modify existing, DISMISS: remove"
-    )
-
-
 class SaveSurveyRecommendationArgs(BaseModel):
     """Arguments for saving a survey recommendation."""
 
@@ -181,52 +173,72 @@ class SaveSurveyRecommendationTool(MaxTool):
             return f"No active recommendation found to dismiss for {source_type} '{source_id}'", None
 
         elif action in ["NEW", "UPDATE", "REINFORCE"]:
-            # For UPDATE/REINFORCE, try to find existing recommendation
-            existing = None
+            # Build filter for finding existing recommendations
+            filter_kwargs = {"team": self._team, "status": SurveyRecommendation.Status.ACTIVE}
+            if source_insight:
+                filter_kwargs["source_insight"] = source_insight
+            elif source_experiment:
+                filter_kwargs["source_experiment"] = source_experiment
+            elif source_feature_flag:
+                filter_kwargs["source_feature_flag"] = source_feature_flag
+
             if action in ["UPDATE", "REINFORCE"]:
-                filter_kwargs = {"team": self._team, "status": SurveyRecommendation.Status.ACTIVE}
-                if source_insight:
-                    filter_kwargs["source_insight"] = source_insight
-                elif source_experiment:
-                    filter_kwargs["source_experiment"] = source_experiment
-                elif source_feature_flag:
-                    filter_kwargs["source_feature_flag"] = source_feature_flag
+                # Use atomic update to avoid race conditions
+                if action == "REINFORCE":
+                    # Atomically increment score by 10, capped at 100
+                    from django.db.models import F
+                    from django.db.models.functions import Least
+
+                    updated = await SurveyRecommendation.objects.filter(**filter_kwargs).aupdate(
+                        recommendation_type=rec_type,
+                        display_context=display_context,
+                        survey_defaults=survey_defaults,
+                        score=Least(F("score") + 10, 100),
+                    )
+                    if updated:
+                        return f"Reinforced recommendation for {source_type} '{source_id}'", None
+                    return f"No existing recommendation found to reinforce for {source_type} '{source_id}'", None
+                else:
+                    # UPDATE action
+                    updated = await SurveyRecommendation.objects.filter(**filter_kwargs).aupdate(
+                        recommendation_type=rec_type,
+                        display_context=display_context,
+                        survey_defaults=survey_defaults,
+                        score=score,
+                    )
+                    if updated:
+                        return f"Updated recommendation for {source_type} '{source_id}' (score: {score})", None
+                    # Fall through to create new if update target doesn't exist
+                    action = "NEW"
+
+            # Create new recommendation (for NEW action or UPDATE fallback)
+            if action == "NEW":
+                from django.db import IntegrityError
 
                 try:
-                    existing = await SurveyRecommendation.objects.aget(**filter_kwargs)
-                except SurveyRecommendation.DoesNotExist:
-                    if action == "UPDATE":
-                        # Fall back to creating new if update target doesn't exist
-                        action = "NEW"
-                    elif action == "REINFORCE":
-                        return f"No existing recommendation found to reinforce for {source_type} '{source_id}'", None
-
-            if existing:
-                # Update existing recommendation
-                existing.recommendation_type = rec_type
-                existing.display_context = display_context
-                existing.survey_defaults = survey_defaults
-                if action == "REINFORCE":
-                    # Increase score by 10% for reinforcement, capped at 100
-                    existing.score = min(100, score + 10)
-                else:
-                    existing.score = score
-                await existing.asave()
-                return f"Updated recommendation for {source_type} '{source_id}' (score: {existing.score})", None
-
-            else:
-                # Create new recommendation
-                recommendation = SurveyRecommendation(
-                    team=self._team,
-                    recommendation_type=rec_type,
-                    survey_defaults=survey_defaults,
-                    display_context=display_context,
-                    score=score,
-                    source_insight=source_insight,
-                    source_experiment=source_experiment,
-                    source_feature_flag=source_feature_flag,
-                )
-                await recommendation.asave()
-                return f"Created new recommendation for {source_type} '{source_id}' (score: {score})", None
+                    recommendation = SurveyRecommendation(
+                        team=self._team,
+                        recommendation_type=rec_type,
+                        survey_defaults=survey_defaults,
+                        display_context=display_context,
+                        score=score,
+                        source_insight=source_insight,
+                        source_experiment=source_experiment,
+                        source_feature_flag=source_feature_flag,
+                    )
+                    await recommendation.asave()
+                    return f"Created new recommendation for {source_type} '{source_id}' (score: {score})", None
+                except IntegrityError:
+                    # Race condition: another request created this recommendation
+                    # Update the existing one instead
+                    updated = await SurveyRecommendation.objects.filter(**filter_kwargs).aupdate(
+                        recommendation_type=rec_type,
+                        display_context=display_context,
+                        survey_defaults=survey_defaults,
+                        score=score,
+                    )
+                    if updated:
+                        return f"Updated existing recommendation for {source_type} '{source_id}' (score: {score})", None
+                    return f"Failed to create or update recommendation for {source_type} '{source_id}'", None
 
         return f"Invalid action: {action}", None

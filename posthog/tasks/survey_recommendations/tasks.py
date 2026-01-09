@@ -2,6 +2,8 @@
 Celery tasks for generating survey recommendations.
 """
 
+from django.db.models import Q
+
 import structlog
 from celery import shared_task
 
@@ -9,6 +11,27 @@ from posthog.models import Team
 from posthog.models.surveys.survey_recommendation import SurveyRecommendation
 
 logger = structlog.get_logger(__name__)
+
+SURVEY_RECOMMENDATIONS_FEATURE_FLAG = "survey-recommendations"
+
+
+def is_survey_recommendations_enabled(team: Team) -> bool:
+    """Check if survey recommendations feature is enabled for a team."""
+    from posthog.models.feature_flag import FeatureFlag
+
+    try:
+        flag = FeatureFlag.objects.get(
+            team=team,
+            key=SURVEY_RECOMMENDATIONS_FEATURE_FLAG,
+            deleted=False,
+        )
+        # Check if flag is active and has any rollout
+        if not flag.active:
+            return False
+        groups = flag.filters.get("groups", [])
+        return any(g.get("rollout_percentage", 0) > 0 for g in groups) if groups else False
+    except FeatureFlag.DoesNotExist:
+        return False
 
 
 @shared_task(ignore_result=True, max_retries=1)
@@ -23,6 +46,11 @@ def generate_survey_recommendations_for_team(team_id: int) -> None:
         team = Team.objects.get(id=team_id)
     except Team.DoesNotExist:
         logger.warning("Team not found for survey recommendations", team_id=team_id)
+        return
+
+    # Check feature flag
+    if not is_survey_recommendations_enabled(team):
+        logger.debug("Survey recommendations not enabled for team", team_id=team_id)
         return
 
     # Use the team creator or first admin as the user context
@@ -48,8 +76,6 @@ def generate_survey_recommendations_for_team(team_id: int) -> None:
                 team_id=team_id,
                 result_length=len(analysis_result),
             )
-            # TODO: Parse the analysis result and create SurveyRecommendation records
-            # This will be implemented once we have the structured output format finalized
         else:
             logger.info("No survey recommendations generated", team_id=team_id)
 
@@ -68,7 +94,7 @@ def generate_survey_recommendations_for_all_teams() -> None:
     Schedule survey recommendation generation for all active teams.
 
     This is the periodic task that runs daily to generate recommendations.
-    It spawns individual tasks for each team to process in parallel.
+    It spawns individual tasks for each team, staggered to avoid overwhelming the AI backend.
     """
     from posthog.caching.utils import active_teams
 
@@ -79,8 +105,14 @@ def generate_survey_recommendations_for_all_teams() -> None:
         team_count=len(team_ids),
     )
 
-    for team_id in team_ids:
-        generate_survey_recommendations_for_team.delay(team_id)
+    # Stagger task execution to avoid overwhelming the AI backend
+    # Each task is delayed by 30 seconds from the previous one
+    for i, team_id in enumerate(team_ids):
+        delay_seconds = i * 30  # 30 second intervals
+        generate_survey_recommendations_for_team.apply_async(
+            args=[team_id],
+            countdown=delay_seconds,
+        )
 
 
 @shared_task(ignore_result=True)
@@ -96,16 +128,41 @@ def cleanup_stale_recommendations() -> None:
 
     from django.utils import timezone
 
-    # Mark old unconverted recommendations as dismissed
-    cutoff = timezone.now() - timedelta(days=30)
+    now = timezone.now()
+    cutoff = now - timedelta(days=30)
 
-    updated = SurveyRecommendation.objects.filter(
+    # Dismiss recommendations where the source object was deleted
+    orphaned_count = (
+        SurveyRecommendation.objects.filter(
+            status=SurveyRecommendation.Status.ACTIVE,
+        )
+        .filter(
+            # Source insight was deleted
+            Q(source_insight__isnull=False, source_insight__deleted=True)
+            |
+            # Source feature flag was deleted
+            Q(source_feature_flag__isnull=False, source_feature_flag__deleted=True)
+            |
+            # Source experiment's feature flag was deleted (experiments don't have deleted field)
+            Q(source_experiment__isnull=False, source_experiment__feature_flag__deleted=True)
+        )
+        .update(
+            status=SurveyRecommendation.Status.DISMISSED,
+            dismissed_at=now,
+        )
+    )
+
+    if orphaned_count:
+        logger.info("Dismissed orphaned survey recommendations", count=orphaned_count)
+
+    # Mark old unconverted recommendations as dismissed
+    stale_count = SurveyRecommendation.objects.filter(
         status=SurveyRecommendation.Status.ACTIVE,
         created_at__lt=cutoff,
     ).update(
         status=SurveyRecommendation.Status.DISMISSED,
-        dismissed_at=timezone.now(),
+        dismissed_at=now,
     )
 
-    if updated:
-        logger.info("Dismissed stale survey recommendations", count=updated)
+    if stale_count:
+        logger.info("Dismissed stale survey recommendations", count=stale_count)
