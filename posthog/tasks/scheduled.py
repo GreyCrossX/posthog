@@ -24,6 +24,10 @@ from posthog.tasks.hypercache_verification import (
 from posthog.tasks.integrations import refresh_integrations
 from posthog.tasks.llm_analytics_usage_report import send_llm_analytics_usage_reports
 from posthog.tasks.remote_config import sync_all_remote_configs
+from posthog.tasks.survey_recommendations.tasks import (
+    cleanup_stale_recommendations,
+    generate_survey_recommendations_for_all_teams,
+)
 from posthog.tasks.surveys import sync_all_surveys_cache
 from posthog.tasks.tasks import (
     calculate_cohort,
@@ -506,4 +510,16 @@ def setup_periodic_tasks(sender: Celery, **kwargs: Any) -> None:
         crontab(hour="5", minute="0"),
         deactivate_stale_materializations.s(),
         name="deactivate stale endpoint materializations",
+    )
+
+    # Survey recommendations - generate daily, cleanup weekly
+    sender.add_periodic_task(
+        crontab(hour="6", minute="0"),
+        generate_survey_recommendations_for_all_teams.s(),
+        name="generate survey recommendations for all teams",
+    )
+    sender.add_periodic_task(
+        crontab(day_of_week="sun", hour="7", minute="0"),
+        cleanup_stale_recommendations.s(),
+        name="cleanup stale survey recommendations",
     )
