@@ -27,6 +27,13 @@ import type { productToursLogicType } from './productToursLogicType'
 export const BUTTON_ACTION_OPTIONS: { value: ProductTourButtonAction; label: string }[] = [
     { value: 'dismiss', label: 'Dismiss' },
     { value: 'link', label: 'Open link' },
+    { value: 'trigger_tour', label: 'Start tour' },
+]
+
+export const TOUR_BUTTON_ACTION_OPTIONS: { value: ProductTourButtonAction; label: string }[] = [
+    { value: 'next_step', label: 'Next step' },
+    { value: 'previous_step', label: 'Previous step' },
+    ...BUTTON_ACTION_OPTIONS,
 ]
 
 export const DEFAULT_PRIMARY_BUTTON: ProductTourStepButton = {

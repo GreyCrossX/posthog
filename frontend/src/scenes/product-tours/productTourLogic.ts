@@ -275,19 +275,33 @@ export const productTourLogic = kea<productTourLogicType>([
                     name: !name ? 'Name is required' : undefined,
                 }
 
-                if (content.type === 'announcement') {
-                    for (const step of content.steps || []) {
-                        const primaryButton = step.buttons?.primary
-                        const secondaryButton = step.buttons?.secondary
+                const validateAction = (
+                    actionType: string | undefined,
+                    link: string | undefined,
+                    tourId: string | undefined,
+                    label: string
+                ): string | undefined => {
+                    if (actionType === 'link' && !link?.trim()) {
+                        return `${label} requires a URL`
+                    }
+                    if (actionType === 'trigger_tour' && !tourId) {
+                        return `${label} requires a tour selection`
+                    }
+                    return undefined
+                }
 
-                        if (primaryButton?.action === 'link' && !primaryButton.link?.trim()) {
-                            errors._form = 'Primary button requires a URL'
-                            break
-                        }
-                        if (secondaryButton?.action === 'link' && !secondaryButton.link?.trim()) {
-                            errors._form = 'Secondary button requires a URL'
-                            break
-                        }
+                for (const step of content.steps || []) {
+                    let error: string | undefined
+
+                    const primary = step.buttons?.primary
+                    const secondary = step.buttons?.secondary
+                    error =
+                        validateAction(primary?.action, primary?.link, primary?.tourId, 'Primary button') ||
+                        validateAction(secondary?.action, secondary?.link, secondary?.tourId, 'Secondary button')
+
+                    if (error) {
+                        errors._form = error
+                        break
                     }
                 }
 

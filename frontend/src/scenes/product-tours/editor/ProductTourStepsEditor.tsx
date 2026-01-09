@@ -27,6 +27,7 @@ import {
 } from '~/types'
 
 import { ProductTourPreview } from '../components/ProductTourPreview'
+import { StepButtonsEditor } from './StepButtonsEditor'
 import { StepContentEditor } from './StepContentEditor'
 import { StepLayoutSettings } from './StepLayoutSettings'
 import { StepScreenshotThumbnail } from './StepScreenshotThumbnail'
@@ -265,6 +266,22 @@ export function ProductTourStepsEditor({ steps, appearance, onChange }: ProductT
 
                                 {/* Step settings */}
                                 <LemonDivider className="my-4" />
+
+                                {selectedStep.type === 'modal' && (
+                                    <>
+                                        <div className="ProductTourStepsEditor__step-buttons">
+                                            <h4 className="font-semibold mb-3">Buttons</h4>
+                                            <StepButtonsEditor
+                                                buttons={selectedStep.buttons}
+                                                onChange={(buttons) => updateStep(selectedStepIndex, { buttons })}
+                                                isTourContext={true}
+                                                stepIndex={selectedStepIndex}
+                                                totalSteps={steps.length}
+                                                layout="horizontal"
+                                            />
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="ProductTourStepsEditor__step-settings">
                                     <h4 className="font-semibold mb-3">Step settings</h4>
