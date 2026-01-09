@@ -324,6 +324,7 @@ class AssistantTool(StrEnum):
     CREATE_FORM = "create_form"
     TASK = "task"
     UPSERT_DASHBOARD = "upsert_dashboard"
+    SAVE_SURVEY_RECOMMENDATION = "save_survey_recommendation"
 
 
 class AssistantToolCall(BaseModel):

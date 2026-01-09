@@ -10,11 +10,13 @@ import uuid
 import structlog
 from asgiref.sync import async_to_sync
 
-from posthog.schema import AgentMode, AssistantMessage, HumanMessage
+from posthog.schema import AgentMode, AssistantMessage, AssistantTool, HumanMessage
 
 from posthog.models import Team, User
 from posthog.tasks.survey_recommendations.queries import get_survey_recommendation_candidates
 
+# Import the tool to trigger registration in CONTEXTUAL_TOOL_NAME_TO_TOOL
+import ee.hogai.tools.save_survey_recommendation  # noqa: F401
 from ee.hogai.chat_agent.runner import ChatAgentRunner
 from ee.models import Conversation
 
@@ -56,17 +58,12 @@ When reviewing existing recommendations:
 - **DISMISS**: If the source insight/experiment/flag no longer warrants a survey (e.g., conversion improved, experiment removed), mark it for dismissal
 - **UPDATE**: If the recommendation is still valid but the context has changed, update the reason and score
 
-## Output Format
+## Saving Recommendations
 
-For each recommendation (new or updated), provide:
-1. **Action**: NEW, REINFORCE, UPDATE, or DISMISS
-2. **Type**: LOW_CONVERSION_FUNNEL, DECLINING_FEATURE, EXPERIMENT_FEEDBACK, or FEATURE_FLAG_FEEDBACK
-3. **Source**: The insight short_id, experiment name, or flag key
-4. **Reason**: Why a survey would be valuable (1-2 sentences), or why it should be dismissed
-5. **Suggested Survey**: A brief description of what the survey should ask (skip for DISMISS)
-6. **Score**: 0-100 based on urgency/impact (higher = more important)
+**IMPORTANT**: For each recommendation you want to create, update, or dismiss, you MUST use the `save_survey_recommendation` tool.
+Call the tool once for each recommendation. Do not just describe your recommendations - actually save them using the tool.
 
-Return your analysis as a structured list. Focus on the top 5 most impactful recommendations, plus any updates to existing ones.
+Focus on the top 5 most impactful NEW recommendations, plus any updates to existing ones.
 """
 
 
@@ -188,6 +185,10 @@ async def analyze_survey_opportunities_async(team: Team, user: User) -> str | No
     try:
         message = HumanMessage(content=prompt, id=str(uuid.uuid4()))
 
+        # Pass save_survey_recommendation as a contextual tool so the AI can use it
+        # This tool is internal-only and not available in normal Max AI conversations
+        contextual_tools = {AssistantTool.SAVE_SURVEY_RECOMMENDATION.value: {}}
+
         runner = ChatAgentRunner(
             team=team,
             conversation=conversation,
@@ -197,6 +198,7 @@ async def analyze_survey_opportunities_async(team: Team, user: User) -> str | No
             agent_mode=AgentMode.PRODUCT_ANALYTICS,  # Start in product analytics mode for insight analysis
             use_checkpointer=False,  # Don't persist checkpoints for background analysis
             is_agent_billable=False,  # Don't bill for internal analysis
+            contextual_tools=contextual_tools,  # Make save_survey_recommendation tool available
         )
 
         final_response: str | None = None
