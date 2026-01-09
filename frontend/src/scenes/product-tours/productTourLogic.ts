@@ -293,11 +293,16 @@ export const productTourLogic = kea<productTourLogicType>([
                 for (const step of content.steps || []) {
                     let error: string | undefined
 
-                    const primary = step.buttons?.primary
-                    const secondary = step.buttons?.secondary
-                    error =
-                        validateAction(primary?.action, primary?.link, primary?.tourId, 'Primary button') ||
-                        validateAction(secondary?.action, secondary?.link, secondary?.tourId, 'Secondary button')
+                    if (step.type === 'banner') {
+                        const action = step.bannerConfig?.action
+                        error = validateAction(action?.type, action?.link, action?.tourId, 'Banner click action')
+                    } else {
+                        const primary = step.buttons?.primary
+                        const secondary = step.buttons?.secondary
+                        error =
+                            validateAction(primary?.action, primary?.link, primary?.tourId, 'Primary button') ||
+                            validateAction(secondary?.action, secondary?.link, secondary?.tourId, 'Secondary button')
+                    }
 
                     if (error) {
                         errors._form = error

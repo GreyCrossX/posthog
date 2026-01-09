@@ -17,19 +17,21 @@ import { SceneTitleSection } from '~/layout/scenes/components/SceneTitleSection'
 import { ProductTourStep } from '~/types'
 
 import { AnnouncementContentEditor } from './AnnouncementContentEditor'
+import { BannerContentEditor } from './BannerContentEditor'
 import { AutoShowSection } from './components/AutoShowSection'
+import { BannerCustomization } from './components/BannerCustomization'
 import { EditInToolbarButton } from './components/EditInToolbarButton'
 import { ProductTourCustomization } from './components/ProductTourCustomization'
 import { ProductTourStepsEditor } from './editor'
 import { ProductTourEditTab, productTourLogic } from './productTourLogic'
-import { isAnnouncement } from './productToursLogic'
+import { isAnnouncement, isBannerAnnouncement } from './productToursLogic'
 
 export function ProductTourEdit({ id }: { id: string }): JSX.Element {
     const {
         productTour,
         productTourLoading,
         productTourForm,
-        productTourFormErrors,
+        productTourFormAllErrors,
         targetingFlagFilters,
         isProductTourFormSubmitting,
         editTab,
@@ -211,21 +213,34 @@ export function ProductTourEdit({ id }: { id: string }): JSX.Element {
                 {editTab === ProductTourEditTab.Steps &&
                     (isAnnouncement(productTour) ? (
                         <>
-                            {productTourFormErrors._form && (
+                            {productTourFormAllErrors._form && (
                                 <LemonField name="_form" className="mb-4">
                                     <span />
                                 </LemonField>
                             )}
-                            <AnnouncementContentEditor
-                                step={productTourForm.content?.steps?.[0]}
-                                appearance={productTourForm.content?.appearance}
-                                onChange={(step: ProductTourStep) => {
-                                    setProductTourFormValue('content', {
-                                        ...productTourForm.content,
-                                        steps: [step],
-                                    })
-                                }}
-                            />
+                            {isBannerAnnouncement(productTour) ? (
+                                <BannerContentEditor
+                                    step={productTourForm.content?.steps?.[0]}
+                                    appearance={productTourForm.content?.appearance}
+                                    onChange={(step: ProductTourStep) => {
+                                        setProductTourFormValue('content', {
+                                            ...productTourForm.content,
+                                            steps: [step],
+                                        })
+                                    }}
+                                />
+                            ) : (
+                                <AnnouncementContentEditor
+                                    step={productTourForm.content?.steps?.[0]}
+                                    appearance={productTourForm.content?.appearance}
+                                    onChange={(step: ProductTourStep) => {
+                                        setProductTourFormValue('content', {
+                                            ...productTourForm.content,
+                                            steps: [step],
+                                        })
+                                    }}
+                                />
+                            )}
                         </>
                     ) : (
                         <ProductTourStepsEditor
@@ -240,18 +255,30 @@ export function ProductTourEdit({ id }: { id: string }): JSX.Element {
                         />
                     ))}
 
-                {editTab === ProductTourEditTab.Customization && (
-                    <ProductTourCustomization
-                        appearance={productTourForm.content?.appearance}
-                        steps={productTourForm.content?.steps ?? []}
-                        onChange={(appearance) => {
-                            setProductTourFormValue('content', {
-                                ...productTourForm.content,
-                                appearance,
-                            })
-                        }}
-                    />
-                )}
+                {editTab === ProductTourEditTab.Customization &&
+                    (isBannerAnnouncement(productTour) ? (
+                        <BannerCustomization
+                            appearance={productTourForm.content?.appearance}
+                            step={productTourForm.content?.steps?.[0]}
+                            onChange={(appearance) => {
+                                setProductTourFormValue('content', {
+                                    ...productTourForm.content,
+                                    appearance,
+                                })
+                            }}
+                        />
+                    ) : (
+                        <ProductTourCustomization
+                            appearance={productTourForm.content?.appearance}
+                            steps={productTourForm.content?.steps ?? []}
+                            onChange={(appearance) => {
+                                setProductTourFormValue('content', {
+                                    ...productTourForm.content,
+                                    appearance,
+                                })
+                            }}
+                        />
+                    ))}
             </SceneContent>
         </Form>
     )
