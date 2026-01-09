@@ -24,6 +24,9 @@ logger = structlog.get_logger(__name__)
 SURVEY_RECOMMENDATION_PROMPT = """
 I need you to analyze the following insights, experiments, and feature flags to identify opportunities for user surveys.
 
+## Existing Active Recommendations
+{existing_recommendations_section}
+
 ## Most Viewed Funnels (last 30 days)
 {funnels_section}
 
@@ -48,16 +51,22 @@ For each item above, use the read_data tool to:
 4. For running experiments: Suggest in-app surveys to gather qualitative feedback during the experiment.
 5. For feature flags: Suggest feedback surveys for recently launched features.
 
+When reviewing existing recommendations:
+- **REINFORCE**: If the underlying data still supports the recommendation, keep it and optionally increase its score
+- **DISMISS**: If the source insight/experiment/flag no longer warrants a survey (e.g., conversion improved, experiment removed), mark it for dismissal
+- **UPDATE**: If the recommendation is still valid but the context has changed, update the reason and score
+
 ## Output Format
 
-For each recommendation, provide:
-1. **Type**: LOW_CONVERSION_FUNNEL, DECLINING_FEATURE, EXPERIMENT_FEEDBACK, or FEATURE_FLAG_FEEDBACK
-2. **Source**: The insight short_id, experiment name, or flag key
-3. **Reason**: Why a survey would be valuable (1-2 sentences)
-4. **Suggested Survey**: A brief description of what the survey should ask
-5. **Score**: 0-100 based on urgency/impact (higher = more important)
+For each recommendation (new or updated), provide:
+1. **Action**: NEW, REINFORCE, UPDATE, or DISMISS
+2. **Type**: LOW_CONVERSION_FUNNEL, DECLINING_FEATURE, EXPERIMENT_FEEDBACK, or FEATURE_FLAG_FEEDBACK
+3. **Source**: The insight short_id, experiment name, or flag key
+4. **Reason**: Why a survey would be valuable (1-2 sentences), or why it should be dismissed
+5. **Suggested Survey**: A brief description of what the survey should ask (skip for DISMISS)
+6. **Score**: 0-100 based on urgency/impact (higher = more important)
 
-Return your analysis as a structured list. Focus on the top 5 most impactful recommendations.
+Return your analysis as a structured list. Focus on the top 5 most impactful recommendations, plus any updates to existing ones.
 """
 
 
@@ -106,11 +115,44 @@ def _format_flags_section(flags: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _format_existing_recommendations(team: Team) -> str:
+    from posthog.models.surveys.survey_recommendation import SurveyRecommendation
+
+    recommendations = SurveyRecommendation.objects.filter(
+        team=team,
+        status=SurveyRecommendation.Status.ACTIVE,
+    ).select_related("source_insight", "source_feature_flag", "source_experiment")
+
+    if not recommendations.exists():
+        return "No existing recommendations."
+
+    lines = []
+    for rec in recommendations:
+        source = "Unknown"
+        if rec.source_insight:
+            source = f"Insight: {rec.source_insight.short_id}"
+        elif rec.source_feature_flag:
+            source = f"Flag: {rec.source_feature_flag.key}"
+        elif rec.source_experiment:
+            source = f"Experiment: {rec.source_experiment.name}"
+
+        display = rec.display_context or {}
+        title = display.get("title", rec.recommendation_type)
+        reason = display.get("description", "")
+
+        lines.append(
+            f"- **{title}** ({rec.recommendation_type}, Score: {rec.score})\n  Source: {source}\n  Reason: {reason}"
+        )
+
+    return "\n".join(lines)
+
+
 def build_analysis_prompt(team: Team) -> str:
     """Build the prompt for PostHog AI to analyze survey opportunities."""
     candidates = get_survey_recommendation_candidates(team)
 
     return SURVEY_RECOMMENDATION_PROMPT.format(
+        existing_recommendations_section=_format_existing_recommendations(team),
         funnels_section=_format_funnels_section(candidates["most_viewed_funnels"]),
         trends_section=_format_trends_section(candidates["most_viewed_trends"]),
         concluded_experiments_section=_format_experiments_section(candidates["concluded_experiments"]),
