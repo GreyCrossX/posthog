@@ -13,9 +13,9 @@ export function LogsCaptureSettings(): JSX.Element {
 
     return (
         <div>
-            <h3>Console logs capture</h3>
+            <h3>Browser console logs capture</h3>
             <p>
-                Automatically capture console logs from your application and send them to the Logs product for analysis
+                Automatically capture browser session console logs from your application and send them to the Logs product for analysis
                 and debugging.
             </p>
             <p>
