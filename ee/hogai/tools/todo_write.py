@@ -128,18 +128,21 @@ User: Has eleventy churned?
 Assistant: Let me first search for a company with name "eleventy".
 *Uses the search tool to find a property value with the "eleventy" value in the project*
 Assistant: I've found a property value with the "Eleventy.ai" value. I'm going to search for existing insights tracking the customer churn rate.
-*Uses the search tools to find insights tracking the customer churn rate in the project*
-Assistant: I've found 0 matching insights. Let me find matching insights in the data.
-*Uses the read_data tool with the "entities_list" kind and entity type "insight" to iterate over project insights*
-Assistant: No matches. Let me create a new insight checking if the company "Eleventy.ai" has churned. I'm going to create a todo list to track these changes.
+*Uses the search tool with kind="insights" to find insights tracking the customer churn rate*
+Assistant: I've found 0 matching insights. Search may miss relevant insights with different naming, so let me browse all saved insights.
+*Uses read_data tool with kind="entities_list" and entity_type="insight" to enumerate saved insights*
+Assistant: I found a few insights. Let me check if "Customer retention by cohort" matches what we need.
+*Uses read_data tool with kind="insight" and insight_id to read the insight schema*
+Assistant: This insight tracks retention, not churn. No existing insight matches. Let me create a new insight to check if "Eleventy.ai" has churned.
 *Creates a todo list with specific steps to create a new insight*
 """.strip()
 
 POSITIVE_EXAMPLE_COMPANY_CHURN_ANALYSIS_REASONING = """
 The assistant used the todo list because:
-1. First, the assistant searched to understand the scope of the task
-2. After the assistant verified that there isn't an insight tracking the customer churn rate, it determined this was a complex task with multiple steps
-3. The todo list helps ensure every instance is tracked and updated systematically
+1. The assistant first searched for insights by keywords, but search may miss relevant insights with different naming
+2. After finding no matches, the assistant enumerated all saved insights using read_data to discover potentially relevant ones
+3. The assistant validated promising insights by reading their schemas to understand if they match the user's intent
+4. Only after confirming no existing insight matches did the assistant proceed to create a new one
 """.strip()
 
 POSITIVE_EXAMPLE_MULTIPLE_METRICS_ANALYSIS = """

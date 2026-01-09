@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, NotRequired, TypedDict
 
 import pytest
@@ -194,6 +195,7 @@ async def _create_dashboard(team, user, title: str, description: str):
 @pytest.mark.django_db
 async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
     """Test dashboard creation via full agent with natural language prompts."""
+    start_dt = datetime.now()
 
     await MaxPublicEval(
         experiment_name="upsert_dashboard_create",
@@ -201,16 +203,18 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
         scores=[DashboardOperationAccuracy()],
         data=[
             EvalCase(
-                input=EvalInput(input="I want to create a dashboard of how users explore the website"),
+                input=EvalInput(
+                    input="I want to create a new dashboard to track user journeys from homepage to signup"
+                ),
                 expected=EvalExpected(
                     action="create",
                     insight_titles=["Homepage view to signup conversion", "User paths starting at homepage"],
                 ),
             ),
             EvalCase(
-                input=EvalInput(input="Put together a dashboard for file activity metrics"),
+                input=EvalInput(input="Put together a dashboard for key metrics"),
                 expected=EvalExpected(
-                    action="No action should be taken",
+                    action="No action",
                 ),
             ),
             EvalCase(
@@ -224,6 +228,11 @@ async def eval_create_dashboard(call_agent_for_dashboard, pytestconfig):
         ],
         pytestconfig=pytestconfig,
     )
+
+    # Clean up old dashboards
+    async for dashboard in Dashboard.objects.filter(created_at__gte=start_dt):
+        await dashboard.insights.all().adelete()
+        await dashboard.adelete()
 
 
 @pytest.mark.django_db
