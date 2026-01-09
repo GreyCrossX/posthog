@@ -38,6 +38,7 @@ from .exported_asset import ExportedAsset
 from .exported_recording import ExportedRecording
 from .feature_flag import FeatureFlag
 from .surveys.survey import Survey
+from .surveys.survey_recommendation import SurveyRecommendation
 from .surveys.survey_response_archive import SurveyResponseArchive
 from .file_system.file_system import FileSystem
 from .file_system.file_system_view_log import FileSystemViewLog
@@ -206,6 +207,7 @@ __all__ = [
     "SharingConfiguration",
     "Subscription",
     "Survey",
+    "SurveyRecommendation",
     "SurveyResponseArchive",
     "Tag",
     "TaggedItem",
