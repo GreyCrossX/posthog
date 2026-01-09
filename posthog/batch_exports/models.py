@@ -5,10 +5,16 @@ from math import ceil
 
 from django.db import models
 
+import pytz
+
 from posthog.clickhouse.client import sync_execute
 from posthog.helpers.encrypted_fields import EncryptedJSONField
 from posthog.models.activity_logging.model_activity import ModelActivityMixin
 from posthog.models.utils import UUIDTModel
+
+# this is what is used by the Team model
+# (we could use common_timezones instead; this has 433 timezones vs 596 for all_timezones)
+TIMEZONES = [(tz, tz) for tz in pytz.all_timezones]
 
 
 class BatchExportDestination(UUIDTModel):
@@ -259,6 +265,14 @@ class BatchExport(ModelActivityMixin, UUIDTModel):
         help_text="Which model this BatchExport is exporting.",
     )
     filters = models.JSONField(null=True, blank=True)
+    # determines the timezone used for daily or weekly exports
+    timezone = models.CharField(max_length=240, choices=TIMEZONES, default="UTC")
+    # interval offset allows for batch exports to start at a custom time
+    # (eg daily exports can be confgured to run at 1am local time by setting this to 3600)
+    interval_offset = models.IntegerField(
+        default=0,
+        help_text="The offset in seconds from the start of the default interval that this batch export should run at.",
+    )
 
     @property
     def latest_runs(self):
